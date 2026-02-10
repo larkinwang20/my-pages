@@ -1,0 +1,2 @@
+# my-pages
+static html 
