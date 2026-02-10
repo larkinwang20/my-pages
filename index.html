@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PI-Agent：新一代生成式智能工单平台架构</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+        
+        :root {
+            --ai-indigo: #6366f1;
+            --ai-purple: #8b5cf6;
+            --success-green: #10b981;
+            --bg-slate: #f8fafc;
+        }
+
+        body {
+            font-family: 'Inter', 'Noto Sans SC', sans-serif;
+            background-color: var(--bg-slate);
+            color: #1e293b;
+        }
+
+        .ai-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 1.5rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .ai-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px -10px rgba(0,0,0,0.1);
+            border-color: var(--ai-indigo);
+        }
+
+        .glow-effect {
+            box-shadow: 0 0 25px rgba(99, 102, 241, 0.2);
+            border: 2px solid var(--ai-indigo);
+            animation: pulse-glow 2s infinite alternate;
+        }
+
+        @keyframes pulse-glow {
+            from { box-shadow: 0 0 10px rgba(99, 102, 241, 0.2); }
+            to { box-shadow: 0 0 30px rgba(139, 92, 246, 0.5); }
+        }
+
+        .flow-dot {
+            width: 12px;
+            height: 12px;
+            background: var(--ai-indigo);
+            border-radius: 50%;
+            position: absolute;
+            offset-path: border-box;
+            animation: move-flow 3s infinite linear;
+        }
+
+        /* 极简滚动条 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- 顶部导航 -->
+    <nav class="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-xl shadow-lg">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">PI-Agent 2.0</h1>
+                    <p class="text-[10px] text-slate-500 font-medium tracking-widest uppercase">意图驱动的生成式运维架构</p>
+                </div>
+            </div>
+            <div class="flex gap-4">
+                <div class="hidden md:flex bg-slate-100 rounded-full px-4 py-1.5 items-center gap-4 text-xs font-semibold">
+                    <span class="text-slate-500">当前演示状态：</span>
+                    <span class="flex items-center gap-1.5 text-indigo-600">
+                        <span class="w-2 h-2 bg-indigo-600 rounded-full animate-ping"></span>
+                        AI 生成中控已就绪
+                    </span>
+                </div>
+                <button onclick="startScenario()" class="px-5 py-2 bg-slate-900 text-white text-sm font-bold rounded-full hover:bg-slate-800 transition-all shadow-md">
+                    启动场景演示
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-6 py-8">
+        
+        <!-- 战略对比：现状 vs 目标 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+            <div class="p-6 bg-white rounded-3xl border border-slate-200">
+                <h3 class="text-sm font-bold text-slate-400 mb-4 uppercase tracking-wider">传统模式下的痛点 (Pain Points)</h3>
+                <div class="space-y-4">
+                    <div class="flex items-center gap-4 p-3 bg-red-50 rounded-2xl border border-red-100">
+                        <div class="text-2xl">🧩</div>
+                        <div class="text-xs text-red-700"><b>表单编排复杂：</b> 需手动定义数十个字段与逻辑</div>
+                    </div>
+                    <div class="flex items-center gap-4 p-3 bg-orange-50 rounded-2xl border border-orange-100">
+                        <div class="text-2xl">⛓️</div>
+                        <div class="text-xs text-orange-700"><b>流程配置繁琐：</b> 节点拖拽、条件跳转链路极长</div>
+                    </div>
+                    <div class="flex items-center gap-4 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                        <div class="text-2xl">⏳</div>
+                        <div class="text-xs text-slate-600"><b>响应延迟：</b> 从发现问题到完成派工需要 5-8 个人工环节</div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 bg-indigo-900 rounded-3xl text-white shadow-2xl relative overflow-hidden">
+                <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-indigo-500/20 rounded-full blur-3xl"></div>
+                <h3 class="text-sm font-bold text-indigo-300 mb-4 uppercase tracking-wider">PI-Agent 的生成式方案 (The Solution)</h3>
+                <div class="space-y-4">
+                    <div class="flex items-center gap-4 p-3 bg-white/10 rounded-2xl border border-white/20">
+                        <div class="text-2xl">✨</div>
+                        <div class="text-xs"><b>智能表单动态生成：</b> 语义提取，自动适配最佳录入模板</div>
+                    </div>
+                    <div class="flex items-center gap-4 p-3 bg-white/10 rounded-2xl border border-white/20">
+                        <div class="text-2xl">🤖</div>
+                        <div class="text-xs"><b>工作流零代码生成：</b> 基于意图自动编排审批与处理链路</div>
+                    </div>
+                    <div class="flex items-center gap-4 p-3 bg-emerald-500/20 rounded-2xl border border-emerald-500/30">
+                        <div class="text-2xl">🚀</div>
+                        <div class="text-xs"><b>秒级闭环：</b> “话落，工单到”，实现真正意义上的极简运维</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 核心架构图 -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <!-- 架构画布 -->
+            <div class="lg:col-span-8 space-y-8">
+                
+                <!-- 接入与意图层 -->
+                <div class="flex flex-col items-center">
+                    <div id="layer-input" class="w-full grid grid-cols-3 gap-4">
+                        <div class="ai-card p-4 text-center cursor-pointer" onclick="showDetail('input')">
+                            <span class="text-2xl block mb-1">🎤</span>
+                            <span class="text-xs font-bold">语音/自然语言</span>
+                        </div>
+                        <div class="ai-card p-4 text-center cursor-pointer" onclick="showDetail('input')">
+                            <span class="text-2xl block mb-1">📸</span>
+                            <span class="text-xs font-bold">图像/视频识别</span>
+                        </div>
+                        <div class="ai-card p-4 text-center cursor-pointer" onclick="showDetail('input')">
+                            <span class="text-2xl block mb-1">⏰</span>
+                            <span class="text-xs font-bold">巡检计划触发</span>
+                        </div>
+                    </div>
+                    <div class="h-8 w-px bg-slate-200"></div>
+                </div>
+
+                <!-- Agent 中枢 (核心) -->
+                <div class="relative px-12">
+                    <div id="node-agent" class="glow-effect bg-white p-8 rounded-[2.5rem] text-center relative z-20">
+                        <div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-[10px] font-black px-4 py-1 rounded-full uppercase tracking-widest">Core Engine</div>
+                        <div class="text-5xl mb-4">🧠</div>
+                        <h2 class="text-2xl font-black text-slate-800">PI-Agent 中控大脑</h2>
+                        <div class="grid grid-cols-3 gap-2 mt-4">
+                            <span class="px-2 py-1 bg-slate-100 text-[10px] rounded-lg">语义意图提取</span>
+                            <span class="px-2 py-1 bg-slate-100 text-[10px] rounded-lg">动态工具编排</span>
+                            <span class="px-2 py-1 bg-slate-100 text-[10px] rounded-lg">知识库 RAG</span>
+                        </div>
+                    </div>
+                    <!-- 动态连线效果 (示意) -->
+                    <div class="absolute top-1/2 -translate-y-1/2 left-0 w-12 h-px bg-slate-300"></div>
+                    <div class="absolute top-1/2 -translate-y-1/2 right-0 w-12 h-px bg-slate-300"></div>
+                </div>
+
+                <!-- 生成式能力层 -->
+                <div class="flex flex-col items-center">
+                    <div class="h-8 w-px bg-slate-200"></div>
+                    <div class="w-full grid grid-cols-2 gap-8 px-4">
+                        <div id="node-gen-form" class="ai-card p-6 border-dashed border-2 border-indigo-200 bg-indigo-50/30">
+                            <h4 class="font-bold text-indigo-700 flex items-center gap-2 mb-2 italic">
+                                <span>🪄</span> Auto-Form Gen
+                            </h4>
+                            <p class="text-[10px] text-slate-500">智能表单生成：自动根据需求提取所需字段，完成界面渲染。</p>
+                        </div>
+                        <div id="node-gen-flow" class="ai-card p-6 border-dashed border-2 border-purple-200 bg-purple-50/30">
+                            <h4 class="font-bold text-purple-700 flex items-center gap-2 mb-2 italic">
+                                <span>🌊</span> Auto-Workflow Gen
+                            </h4>
+                            <p class="text-[10px] text-slate-500">智能流程生成：自动定义节点、审批链路及流转逻辑。</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 业务底座层 -->
+                <div class="flex flex-col items-center">
+                    <div class="h-8 w-px bg-slate-200"></div>
+                    <div class="w-full grid grid-cols-4 gap-4">
+                        <div id="node-api-pi" class="ai-card p-4 text-center cursor-pointer border-emerald-100 bg-emerald-50/20" onclick="showDetail('api-pi')">
+                            <div class="text-2xl mb-1">📋</div>
+                            <div class="text-[10px] font-bold text-emerald-800">工单管理<br>(API-PI)</div>
+                        </div>
+                        <div id="node-plan" class="ai-card p-4 text-center cursor-pointer border-emerald-100" onclick="showDetail('plan')">
+                            <div class="text-2xl mb-1">📅</div>
+                            <div class="text-[10px] font-bold">计划/保养<br>管理</div>
+                        </div>
+                        <div id="node-mcp" class="ai-card p-4 text-center cursor-pointer border-slate-300 bg-slate-100" onclick="showDetail('mcp')">
+                            <div class="text-2xl mb-1">🛠️</div>
+                            <div class="text-[10px] font-bold uppercase">PI-MCP-Server</div>
+                        </div>
+                        <div id="node-worker" class="ai-card p-4 text-center cursor-pointer border-blue-100 bg-blue-50/20" onclick="showDetail('worker')">
+                            <div class="text-2xl mb-1">👷</div>
+                            <div class="text-[10px] font-bold text-blue-800">人力资源<br>匹配系统</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 侧边栏：实时演示与分析 -->
+            <div class="lg:col-span-4 space-y-6">
+                <!-- 模拟对话框 -->
+                <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 h-[320px] flex flex-col">
+                    <h4 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">智能交互演示区</h4>
+                    <div id="chat-box" class="flex-grow space-y-3 overflow-y-auto no-scrollbar pr-2">
+                        <div class="bg-slate-100 p-3 rounded-2xl rounded-tl-none text-xs">
+                            你好，我是 PI-Agent。请告诉我你需要处理什么业务？
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-slate-100 flex gap-2">
+                        <input id="user-input" type="text" placeholder="输入意图，例如：巡检4号楼电梯..." class="flex-grow bg-slate-50 border-none rounded-full px-4 py-2 text-xs focus:ring-2 focus:ring-indigo-500">
+                        <button onclick="handleSend()" class="p-2 bg-indigo-600 text-white rounded-full">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 指标看板 -->
+                <div class="bg-slate-900 rounded-3xl p-6 text-white">
+                    <h4 class="text-xs font-bold text-slate-400 mb-4 uppercase tracking-widest">AI 赋能成效估计</h4>
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between text-[10px] mb-1">
+                                <span>配置自动化率</span>
+                                <span class="text-indigo-400">92%</span>
+                            </div>
+                            <div class="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+                                <div class="bg-indigo-500 h-full w-[92%]"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-[10px] mb-1">
+                                <span>异常识别准确度</span>
+                                <span class="text-emerald-400">98.5%</span>
+                            </div>
+                            <div class="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+                                <div class="bg-emerald-500 h-full w-[98%]"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-6 p-4 bg-white/5 rounded-2xl border border-white/10">
+                        <p class="text-[10px] text-slate-400">架构师结语：</p>
+                        <p class="text-xs italic mt-1 text-slate-200">“通过 PI-Agent，我们将从传统的‘系统管理者’转变为‘业务定义的旁观者’。”</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 演示遮罩层 -->
+    <div id="overlay" class="fixed inset-0 bg-slate-900/95 z-[100] hidden items-center justify-center p-6">
+        <div class="bg-white rounded-[3rem] max-w-4xl w-full p-12 relative overflow-hidden">
+            <button onclick="closeScenario()" class="absolute top-8 right-8 text-slate-300 hover:text-slate-600 text-3xl">×</button>
+            
+            <div id="scenario-content" class="space-y-8">
+                <div class="text-center">
+                    <span class="px-4 py-1 bg-indigo-100 text-indigo-700 text-[10px] font-black rounded-full uppercase tracking-tighter">Live Scenario Demo</span>
+                    <h2 class="text-3xl font-black text-slate-900 mt-2">意图全路径闭环演示</h2>
+                    <p class="text-slate-500">模拟真实业务请求：从“自然语言”到“工单派发”</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4" id="step-timeline">
+                    <!-- 动态注入步骤 -->
+                </div>
+
+                <div class="p-8 bg-slate-50 rounded-3xl border border-slate-100 min-h-[160px] flex items-center justify-center text-center">
+                    <div id="step-desc" class="space-y-3">
+                        <div class="text-4xl">⏳</div>
+                        <p class="text-slate-400 font-medium">准备中...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const details = {
+            'input': { title: '多模态接入层', desc: '支持语音、OCR、IoT传感器等多种方式。Agent 对其进行流式解析，不只是接收数据，而是理解“语境”。' },
+            'api-pi': { title: '工单管理 (API-PI)', desc: '作为系统的业务底座，接收 Agent 生成的高质量结构化数据，存储工单全生命周期信息。' },
+            'mcp': { title: 'PI-MCP-Server', desc: '标准化工具集成层。Agent 通过 MCP 协议调用摄像头实时画面、设备参数查询、人员定位等底层工具。' },
+            'worker': { title: '人力匹配系统', desc: 'AI 会根据工单内容（如“电梯维修”）自动在人员画像库中筛选具备“特种设备作业证”且当前空闲的工人。' }
+        };
+
+        function showDetail(id) {
+            const data = details[id];
+            if(!data) return;
+            // 简单提示，实际可做成更复杂的浮窗
+            console.log(data.title, data.desc);
+        }
+
+        function handleSend() {
+            const input = document.getElementById('user-input');
+            const box = document.getElementById('chat-box');
+            if(!input.value) return;
+
+            const userMsg = document.createElement('div');
+            userMsg.className = "bg-indigo-600 text-white p-3 rounded-2xl rounded-tr-none text-xs self-end ml-8";
+            userMsg.innerText = input.value;
+            box.appendChild(userMsg);
+            
+            const typing = document.createElement('div');
+            typing.className = "bg-slate-100 p-3 rounded-2xl rounded-tl-none text-xs w-20 animate-pulse";
+            typing.innerText = "正在解析...";
+            box.appendChild(typing);
+
+            setTimeout(() => {
+                box.removeChild(typing);
+                const aiMsg = document.createElement('div');
+                aiMsg.className = "bg-slate-100 p-3 rounded-2xl rounded-tl-none text-xs";
+                aiMsg.innerText = "已识别您的意图。由于检测到涉及特种设备安全，我已为您智能生成《垂直电梯紧急维修表单》及《双人复核快速工作流》，工单已即时派发给高级技工张工。";
+                box.appendChild(aiMsg);
+                box.scrollTop = box.scrollHeight;
+            }, 1500);
+
+            input.value = "";
+        }
+
+        // 场景演示逻辑
+        const steps = [
+            { icon: '🎤', label: '意图捕获', text: "用户输入：'4号楼东边电梯坏了，有人被困'" },
+            { icon: '🧠', label: '语义分析', text: "PI-Agent 识别：【紧急级】、【位置：4号楼东】、【类型：电梯故障】" },
+            { icon: '🪄', label: '自动编排', text: "动态生成包含'困人状态'字段的表单及'安保+工程'联动工作流" },
+            { icon: '👷', label: '精准分发', text: "根据地理围栏和技能画像，自动向最近的 2 名维保员发送抢修指令" }
+        ];
+
+        function startScenario() {
+            const overlay = document.getElementById('overlay');
+            const timeline = document.getElementById('step-timeline');
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+            
+            timeline.innerHTML = '';
+            steps.forEach((s, i) => {
+                const stepEl = document.createElement('div');
+                stepEl.className = "p-4 bg-slate-50 rounded-2xl border border-slate-100 text-center opacity-30 transition-all duration-500";
+                stepEl.id = `step-node-${i}`;
+                stepEl.innerHTML = `<div class="text-2xl mb-1">${s.icon}</div><div class="text-[10px] font-black uppercase text-slate-400">${s.label}</div>`;
+                timeline.appendChild(stepEl);
+            });
+
+            let current = 0;
+            const run = () => {
+                if(current >= steps.length) {
+                    document.getElementById('step-desc').innerHTML = `<div class="text-4xl mb-2">✅</div><p class="text-emerald-600 font-bold">全流程自动化构建完成</p><p class="text-xs text-slate-400">平均耗时：1.2秒 | 节省人工配置时间：45分钟</p>`;
+                    return;
+                }
+
+                document.querySelectorAll('[id^="step-node-"]').forEach(el => el.classList.remove('bg-indigo-50', 'border-indigo-200', 'ring-2', 'ring-indigo-100', 'opacity-100'));
+                const active = document.getElementById(`step-node-${current}`);
+                active.classList.add('bg-indigo-50', 'border-indigo-200', 'ring-2', 'ring-indigo-100', 'opacity-100');
+                active.classList.remove('opacity-30');
+
+                document.getElementById('step-desc').innerHTML = `<div class="text-4xl animate-bounce mb-2">${steps[current].icon}</div><p class="text-slate-800 font-bold">${steps[current].text}</p>`;
+                
+                current++;
+                setTimeout(run, 2500);
+            };
+            run();
+        }
+
+        function closeScenario() {
+            document.getElementById('overlay').classList.add('hidden');
+            document.getElementById('overlay').classList.remove('flex');
+        }
+
+        window.onload = () => {
+            // 初始化一个小图表展示提效情况
+            const ctx = document.getElementById('efficiencyChart');
+            // 此处省略 Chart.js 初始化以保持代码简洁，页面已提供足够视觉元素
+        };
+    </script>
+</body>
+</html>
