@@ -210,7 +210,7 @@ graph TB
         APM["APM<br/>资产/设备/报警"]
         DeskSvc["Desk<br/>菜单/组织/部门<br/>用户/角色/权限"]
         EAMSvc["EAM<br/>备件"]
-        MSF["MessagePush<br/>群组通知"]
+        MSF["Notification<br/>群组通知"]
     end
 
     subgraph infra ["基础设施"]
